@@ -152,6 +152,7 @@ pub use intrinsics::copy;
 /// assert_eq!(*v, 42);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[inline]
 pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     intrinsics::write_bytes(dst, val, count);
 }
