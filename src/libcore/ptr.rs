@@ -79,8 +79,82 @@ pub use intrinsics::copy_nonoverlapping;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use intrinsics::copy;
 
+/// Sets `count * size_of::<T>()` bytes of memory starting at `dst` to
+/// `val`.
+///
+/// `write_bytes` is similar to C's [`memset`], but sets `count *
+/// size_of::<T>()` bytes to `val`.
+///
+/// [`memset`]: https://en.cppreference.com/w/c/string/byte/memset
+///
+/// # Safety
+///
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
+///
+/// * `dst` must be properly aligned.
+///
+/// Additionally, the caller must ensure that writing `count *
+/// size_of::<T>()` bytes to the given region of memory results in a valid
+/// value of `T`. Using a region of memory typed as a `T` that contains an
+/// invalid value of `T` is undefined behavior.
+///
+/// Note that even if the effectively copied size (`count * size_of::<T>()`) is
+/// `0`, the pointer must be non-NULL and properly aligned.
+///
+/// [valid]: ../ptr/index.html#safety
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// use std::ptr;
+///
+/// let mut vec = vec![0u32; 4];
+/// unsafe {
+///     let vec_ptr = vec.as_mut_ptr();
+///     ptr::write_bytes(vec_ptr, 0xfe, 2);
+/// }
+/// assert_eq!(vec, [0xfefefefe, 0xfefefefe, 0, 0]);
+/// ```
+///
+/// Creating an invalid value:
+///
+/// ```
+/// use std::ptr;
+///
+/// let mut v = Box::new(0i32);
+///
+/// unsafe {
+///     // Leaks the previously held value by overwriting the `Box<T>` with
+///     // a null pointer.
+///     ptr::write_bytes(&mut v as *mut Box<i32>, 0, 1);
+/// }
+///
+/// // At this point, using or dropping `v` results in undefined behavior.
+/// // drop(v); // ERROR
+///
+/// // Even leaking `v` "uses" it, and hence is undefined behavior.
+/// // mem::forget(v); // ERROR
+///
+/// // In fact, `v` is invalid according to basic type layout invariants, so *any*
+/// // operation touching it is undefined behavior.
+/// // let v2 = v; // ERROR
+///
+/// unsafe {
+///     // Let us instead put in a valid value
+///     ptr::write(&mut v as *mut Box<i32>, Box::new(42i32));
+/// }
+///
+/// // Now the box is fine
+/// assert_eq!(*v, 42);
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use intrinsics::write_bytes;
+pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
+    intrinsics::write_bytes(dst, val, count);
+}
 
 /// Executes the destructor (if any) of the pointed-to value.
 ///
